@@ -187,8 +187,9 @@ int main()
     fill_random_field(matrix, MATRIX_SIZE);
     fill_random_field(matrix, MATRIX_SIZE);
 
-    //Run game
-    //game loop
+    //TODO: use SDL2
+
+    //TODO: game loop
     
     print_matrix(matrix, MATRIX_SIZE);
     shift_matrix(UP, matrix, MATRIX_SIZE);
