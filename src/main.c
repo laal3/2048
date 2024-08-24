@@ -1,12 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <string.h>
-
-#define UP 0
-#define RIGHT 1
-#define DOWN 2
-#define LEFT 3
+#include <SDL2/SDL.h>
 
 int** define_matrix(int matrix_size) {
     int** matrix = calloc(matrix_size, sizeof(int*));
@@ -25,6 +20,8 @@ int print_matrix(int **matrix, int matrix_size) {
         }
         printf("\n");
     }
+
+    printf("\n\n");
     
     return 0;
 }
@@ -136,35 +133,6 @@ int shift_left(int** matrix, int matrix_size) {
     return 0;
 }
 
-int shift_matrix(int direction, int** matrix, int matrix_size) {
-    switch(direction) {
-        case UP: 
-            return shift_up(matrix, matrix_size);
-            break;
-        case RIGHT: 
-            return shift_right(matrix, matrix_size);
-            break;
-        case DOWN: 
-            return shift_down(matrix, matrix_size);
-            break;
-        case LEFT: 
-            return shift_left(matrix, matrix_size);
-            break;
-    }
-    
-    return 1;
-}
-
-int** copy_matrix(int** newMatrix, int** matrix, int size) {
-    for(int i = 0; i < size; i++) {
-        for(int j = 0; j < size; j++) {
-            newMatrix[i][j] = matrix[i][j];
-        }
-    }
-
-    return newMatrix;
-}
-
 int matrix_changed(int** matrix, int** refMatrix, int size) {
     for(int i = 0; i < size; i++) {
         for(int j = 0; j < size; j++) {
@@ -177,44 +145,116 @@ int matrix_changed(int** matrix, int** refMatrix, int size) {
     return 0;
 }
 
+int** copy_matrix(int** newMatrix, int** matrix, int size) {
+    for(int i = 0; i < size; i++) {
+        for(int j = 0; j < size; j++) {
+            newMatrix[i][j] = matrix[i][j];
+        }
+    }
+
+    return newMatrix;
+}
+
+int moves_possible(int** matrix, int size) {
+    int** matrix_before = define_matrix(size);
+    int** matrix_after = define_matrix(size);
+    copy_matrix(matrix_before, matrix, size);
+    copy_matrix(matrix_after, matrix, size);
+
+    shift_up(matrix_after, size);
+    if (matrix_changed(matrix_before, matrix_after, size))
+        return 1;
+
+    //reset matrix_after
+    copy_matrix(matrix_after, matrix, size);
+    shift_right(matrix_after, size);
+    if (matrix_changed(matrix_before, matrix_after, size))
+        return 1;
+
+    copy_matrix(matrix_after, matrix, size);
+    shift_down(matrix_after, size);
+    if (matrix_changed(matrix_before, matrix_after, size))
+        return 1;
+
+    copy_matrix(matrix_after, matrix, size);
+    shift_left(matrix_after, size);
+    if (matrix_changed(matrix_before, matrix_after, size))
+        return 1;
+    
+    return 0;
+}
+
 int main()
 {
+    //Initialize graphics
+    SDL_Window* window = NULL;
+    SDL_Renderer* renderer = NULL;
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_CreateWindowAndRenderer(640*4, 480*4, 0, &window, &renderer);    
+
     //Initialize game
+    int exit = 0;
     int MATRIX_SIZE = 5;
     int** matrix = define_matrix(MATRIX_SIZE);
-    int** refMatrix = define_matrix(MATRIX_SIZE);
 
     fill_random_field(matrix, MATRIX_SIZE);
     fill_random_field(matrix, MATRIX_SIZE);
-
-    //TODO: use SDL2
-
-    //TODO: game loop
-    
-    print_matrix(matrix, MATRIX_SIZE);
-    shift_matrix(UP, matrix, MATRIX_SIZE);
-    printf("\n\n");
-    print_matrix(matrix, MATRIX_SIZE);
-    
-    shift_matrix(RIGHT, matrix, MATRIX_SIZE);
-    printf("\n\n");
     print_matrix(matrix, MATRIX_SIZE);
 
-    shift_matrix(DOWN, matrix, MATRIX_SIZE);
-    printf("\n\n");
-    print_matrix(matrix, MATRIX_SIZE);
+    while (!exit) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            switch (event.type) {
+                case SDL_KEYDOWN:
+                    switch (event.key.keysym.sym) {
+                        case SDLK_ESCAPE:
+                            exit = 1;
+                            break;
+                        case SDLK_RIGHT:
+                            shift_right(matrix, MATRIX_SIZE);
+                            break;
+                        case SDLK_LEFT:
+                            shift_left(matrix, MATRIX_SIZE);
+                            break;
+                        case SDLK_UP:
+                            shift_up(matrix, MATRIX_SIZE);
+                            break;
+                        case SDLK_DOWN:
+                            shift_down(matrix, MATRIX_SIZE);
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
 
-    shift_matrix(LEFT, matrix, MATRIX_SIZE);
-    printf("\n\n");
-    print_matrix(matrix, MATRIX_SIZE);
+            //TODO: outsource rendering in other function
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            SDL_RenderDrawLine(renderer, 640*2, 480*2, 640, 480);
+            SDL_RenderPresent(renderer);
+
+            //TODO: fix game logic with SDL_KEYUP
+            print_matrix(matrix, MATRIX_SIZE);
+            if(!moves_possible(matrix, MATRIX_SIZE)) {
+                printf("No more moves possible!");
+                break;
+            }
+        }
+    }   
+
+    printf("Game ended.");
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
     
     //clean up
     for(int i = 0; i < MATRIX_SIZE; i++) {
         free(matrix[i]);
-        free(refMatrix[i]);
     }
     
     free(matrix);
-    free(refMatrix);
     return 0;
 }
